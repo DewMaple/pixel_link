@@ -82,7 +82,7 @@ def test():
     if FLAGS.gpu_memory_fraction < 0:
         sess_config.gpu_options.allow_growth = True
     elif FLAGS.gpu_memory_fraction > 0:
-        sess_config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_memory_fraction;
+        sess_config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_memory_fraction
 
     # Variables to restore: moving avg. or normal weights.
     if FLAGS.using_moving_average:
@@ -118,8 +118,7 @@ def test():
                 for bbox in bboxes:
                     points = np.reshape(bbox, [4, 2])
                     cnts = util.img.points_to_contours(points)
-                    util.img.draw_contours(img, contours=cnts,
-                                           idx=-1, color=color, border_width=1)
+                    util.img.draw_contours(img, contours=cnts, idx=-1, color=color, border_width=3)
 
             image_idx = 0
             pixel_score = pixel_scores[image_idx, ...]
@@ -131,9 +130,9 @@ def test():
             pixel_score = resize(pixel_score)
 
             draw_bboxes(image_data, bboxes_det, util.img.COLOR_RGB_RED)
-            #             print( util.sit(pixel_score))
-            #             print( util.sit(mask))
-            print(util.sit(image_data))
+            print('pixel score: ', util.sit(pixel_score))
+            print('mask: ', util.sit(mask))
+            print('image data: ', util.sit(image_data))
 
 
 def main(_):

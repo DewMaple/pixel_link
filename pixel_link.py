@@ -349,8 +349,7 @@ def mask_to_bboxes(mask, image_shape=None, min_area=None,
         min_height = config.min_height
     bboxes = []
     max_bbox_idx = mask.max()
-    mask = util.img.resize(img=mask, size=(image_w, image_h),
-                           interpolation=cv2.INTER_NEAREST)
+    mask = util.img.resize(img=mask, size=(image_w, image_h), interpolation=cv2.INTER_NEAREST)
 
     for bbox_idx in range(1, max_bbox_idx + 1):
         bbox_mask = mask == bbox_idx

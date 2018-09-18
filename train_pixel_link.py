@@ -193,7 +193,7 @@ def create_clones(batch_queue):
 
         tf.summary.scalar('learning_rate', learning_rate)
     # place clones
-    pixel_link_loss = 0;  # for summary only
+    pixel_link_loss = 0  # for summary only
     gradients = []
     for clone_idx, gpu in enumerate(config.gpus):
         do_summary = clone_idx == 0  # only summary on the first clone
@@ -261,7 +261,7 @@ def train(train_op):
     if FLAGS.gpu_memory_fraction < 0:
         sess_config.gpu_options.allow_growth = True
     elif FLAGS.gpu_memory_fraction > 0:
-        sess_config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_memory_fraction;
+        sess_config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_memory_fraction
 
     init_fn = util.tf.get_init_fn(checkpoint_path=FLAGS.checkpoint_path, train_dir=FLAGS.train_dir,
                                   ignore_missing_vars=FLAGS.ignore_missing_vars,

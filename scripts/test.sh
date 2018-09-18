@@ -1,6 +1,6 @@
 set -x
 set -e
-export CUDA_VISIBLE_DEVICES=
+export CUDA_VISIBLE_DEVICES=$1
 python test_pixel_link.py \
      --checkpoint_path=$2 \
      --dataset_dir=$3\

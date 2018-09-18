@@ -1,11 +1,11 @@
 # encoding = utf-8
 
 import tensorflow as tf
+from pylib import util
 
 import pixel_link
 from nets import pixel_link_symbol
 from preprocessing import ssd_vgg_preprocessing
-from pylib import util
 
 slim = tf.contrib.slim
 import config
@@ -106,7 +106,7 @@ def test():
     if FLAGS.gpu_memory_fraction < 0:
         sess_config.gpu_options.allow_growth = True
     elif FLAGS.gpu_memory_fraction > 0:
-        sess_config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_memory_fraction;
+        sess_config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_memory_fraction
 
     checkpoint_dir = util.io.get_dir(FLAGS.checkpoint_path)
     logdir = util.io.join_path(checkpoint_dir, 'test', FLAGS.dataset_name + '_' + FLAGS.dataset_split_name)
@@ -126,7 +126,7 @@ def test():
     image_names.sort()
 
     checkpoint = FLAGS.checkpoint_path
-    checkpoint_name = util.io.get_filename(str(checkpoint));
+    checkpoint_name = util.io.get_filename(str(checkpoint))
     dump_path = util.io.join_path(logdir, checkpoint_name)
     txt_path = util.io.join_path(dump_path, 'txt')
     zip_path = util.io.join_path(dump_path, checkpoint_name + '_det.zip')
@@ -150,7 +150,7 @@ def test():
                    pixel_pos_scores, link_pos_scores)
 
     # create zip file for icdar2015
-    cmd = 'cd %s;zip -j %s %s/*' % (dump_path, zip_path, txt_path);
+    cmd = 'cd %s;zip -j %s %s/*' % (dump_path, zip_path, txt_path)
     print(cmd)
     util.cmd.cmd(cmd)
     print("zip file created: ", util.io.join_path(dump_path, zip_path))

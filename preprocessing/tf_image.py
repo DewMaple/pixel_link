@@ -17,6 +17,7 @@ Most of the following methods extend TensorFlow image library, and part of
 the code is shameless copy-paste of the former!
 """
 import tensorflow as tf
+from pylib import util
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.ops import array_ops
@@ -25,8 +26,6 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
 from tensorflow.python.ops import variables
-
-from pylib.src import util
 
 
 # =========================================================================== #
