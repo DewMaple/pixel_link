@@ -16,10 +16,7 @@
 """
 import tensorflow as tf
 
-from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
-from tensorflow.python.framework import dtypes
-from tensorflow.python.framework import ops
 
 
 def safe_divide(numerator, denominator, name):
@@ -36,5 +33,3 @@ def safe_divide(numerator, denominator, name):
         math_ops.divide(numerator, denominator),
         tf.zeros_like(numerator),
         name=name)
-
-

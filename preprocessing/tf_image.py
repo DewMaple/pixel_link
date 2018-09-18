@@ -17,24 +17,17 @@ Most of the following methods extend TensorFlow image library, and part of
 the code is shameless copy-paste of the former!
 """
 import tensorflow as tf
-
-from tensorflow.python.framework import constant_op
-from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
-from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import check_ops
-from tensorflow.python.ops import clip_ops
 from tensorflow.python.ops import control_flow_ops
-from tensorflow.python.ops import gen_image_ops
-from tensorflow.python.ops import gen_nn_ops
-from tensorflow.python.ops import string_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
 from tensorflow.python.ops import variables
 
-import util
+from pylib.src import util
+
 
 # =========================================================================== #
 # Modification of TensorFlow image routines.
@@ -161,7 +154,7 @@ def bboxes_crop_or_pad(bboxes, xs, ys,
         bboxes = bboxes + offset
         xs += tf.cast(offset_x, bboxes.dtype)
         ys += tf.cast(offset_y, bboxes.dtype)
-        
+
         # Rescale to target dimension.
         scale = tf.cast(tf.stack([target_height, target_width,
                                   target_height, target_width]), bboxes.dtype)
@@ -244,16 +237,16 @@ def resize_image_bboxes_with_crop_or_pad(image, bboxes, xs, ys,
         cropped = tf.image.crop_to_bounding_box(image, offset_crop_height, offset_crop_width,
                                                 height_crop, width_crop)
         bboxes, xs, ys = bboxes_crop_or_pad(bboxes, xs, ys,
-                                    height, width,
-                                    -offset_crop_height, -offset_crop_width,
-                                    height_crop, width_crop)
+                                            height, width,
+                                            -offset_crop_height, -offset_crop_width,
+                                            height_crop, width_crop)
         # Maybe pad if needed.
         resized = tf.image.pad_to_bounding_box(cropped, offset_pad_height, offset_pad_width,
                                                target_height, target_width)
         bboxes, xs, ys = bboxes_crop_or_pad(bboxes, xs, ys,
-                                    height_crop, width_crop,
-                                    offset_pad_height, offset_pad_width,
-                                    target_height, target_width)
+                                            height_crop, width_crop,
+                                            offset_pad_height, offset_pad_width,
+                                            target_height, target_width)
 
         # In theory all the checks below are redundant.
         if resized.get_shape().ndims is None:
@@ -289,6 +282,7 @@ def resize_image(image, size,
 def random_flip_left_right(image, bboxes, seed=None):
     """Random flip left-right of an image and its bounding boxes.
     """
+
     def flip_bboxes(bboxes):
         """Flip bounding boxes coordinates.
         """
@@ -317,77 +311,83 @@ def random_rotate90(image, bboxes, xs, ys):
     with tf.name_scope('random_rotate90'):
         k = random_ops.random_uniform([], 0, 10000)
         k = tf.cast(k, tf.int32)
-        
+
         image_shape = tf.shape(image)
         h, w = image_shape[0], image_shape[1]
-        image = tf.image.rot90(image, k = k)
+        image = tf.image.rot90(image, k=k)
         bboxes, xs, ys = rotate90(bboxes, xs, ys, k)
         return image, bboxes, xs, ys
 
+
 def tf_rotate_point_by_90(x, y, k):
-    return tf.py_func(util.img.rotate_point_by_90, [x, y, k], 
+    return tf.py_func(util.img.rotate_point_by_90, [x, y, k],
                       [tf.float32, tf.float32])
-    
+
+
 def rotate90(bboxes, xs, ys, k):
-#     bboxes = tf.Print(bboxes, [bboxes], 'before rotate',summarize = 100)
+    #     bboxes = tf.Print(bboxes, [bboxes], 'before rotate',summarize = 100)
     ymin, xmin, ymax, xmax = [bboxes[:, i] for i in range(4)]
     xmin, ymin = tf_rotate_point_by_90(xmin, ymin, k)
     xmax, ymax = tf_rotate_point_by_90(xmax, ymax, k)
-    
+
     new_xmin = tf.minimum(xmin, xmax)
     new_xmax = tf.maximum(xmin, xmax)
-    
+
     new_ymin = tf.minimum(ymin, ymax)
     new_ymax = tf.maximum(ymin, ymax)
-    
+
     bboxes = tf.stack([new_ymin, new_xmin, new_ymax, new_xmax])
     bboxes = tf.transpose(bboxes)
 
     xs, ys = tf_rotate_point_by_90(xs, ys, k)
     return bboxes, xs, ys
-    
+
+
 if __name__ == "__main__":
     import util
+
     image_path = '~/Pictures/img_1.jpg'
-    image_data = util.img.imread(image_path, rgb = True)
+    image_data = util.img.imread(image_path, rgb=True)
     bbox_data = [[100, 100, 300, 300], [400, 400, 500, 500]]
+
+
     def draw_bbox(img, bbox):
         xmin, ymin, xmax, ymax = bbox
-        util.img.rectangle(img, left_up = (xmin, ymin), 
-                           right_bottom = (xmax, ymax), 
-                           color = util.img.COLOR_RGB_RED, 
-                           border_width =  10)
-    
-    image = tf.placeholder(dtype = tf.uint8)
-    bboxes = tf.placeholder(dtype = tf.int32)
-    
-    bboxes_float32 = tf.cast(bboxes, dtype = tf.float32)
-    image_shape = tf.cast(tf.shape(image), dtype = tf.float32)
+        util.img.rectangle(img, left_up=(xmin, ymin),
+                           right_bottom=(xmax, ymax),
+                           color=util.img.COLOR_RGB_RED,
+                           border_width=10)
+
+
+    image = tf.placeholder(dtype=tf.uint8)
+    bboxes = tf.placeholder(dtype=tf.int32)
+
+    bboxes_float32 = tf.cast(bboxes, dtype=tf.float32)
+    image_shape = tf.cast(tf.shape(image), dtype=tf.float32)
     image_h, image_w = image_shape[0], image_shape[1]
     xmin, ymin, xmax, ymax = [bboxes_float32[:, i] for i in range(4)]
-    bboxes_normed = tf.stack([xmin / image_w, ymin / image_h, 
+    bboxes_normed = tf.stack([xmin / image_w, ymin / image_h,
                               xmax / image_w, ymax / image_h])
     bboxes_normed = tf.transpose(bboxes_normed)
-    
+
     target_height = image_h * 2
     target_width = image_w * 2
     target_height = tf.cast(target_height, tf.int32)
     target_width = tf.cast(target_width, tf.int32)
-    
-    processed_image, processed_bboxes = resize_image_bboxes_with_crop_or_pad(image, bboxes_normed,
-                         target_height, target_width)
-    
+
+    processed_image, processed_bboxes = resize_image_bboxes_with_crop_or_pad(image, bboxes_normed, target_height,
+                                                                             target_width)
+
     with tf.Session() as sess:
         resized_image, resized_bboxes = sess.run(
-                [processed_image, processed_bboxes],
-                feed_dict = {image: image_data, bboxes: bbox_data})
+            [processed_image, processed_bboxes],
+            feed_dict={image: image_data, bboxes: bbox_data})
     for _bbox in bbox_data:
         draw_bbox(image_data, _bbox)
-    util.plt.imshow('image_data', image_data)   
-    
+    util.plt.imshow('image_data', image_data)
+
     h, w = resized_image.shape[0:2]
     for _bbox in resized_bboxes:
         _bbox *= [w, h, w, h]
         draw_bbox(resized_image, _bbox)
     util.plt.imshow('resized_image', resized_image)
-        

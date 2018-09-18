@@ -1,11 +1,12 @@
 import tensorflow as tf
-from tensorflow.python.ops import variables
-from tensorflow.python.ops import array_ops
 from tensorflow.python.framework import ops
+from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import state_ops
 from tensorflow.python.ops import variable_scope
+from tensorflow.python.ops import variables
+
 from tf_extended import math as tfe_math
-import util
+
 
 def _create_local(name, shape, collections=None, validate_shape=True,
                   dtype=tf.float32):
@@ -23,13 +24,14 @@ def _create_local(name, shape, collections=None, validate_shape=True,
     collections = list(collections or [])
     collections += [ops.GraphKeys.LOCAL_VARIABLES]
     return variables.Variable(
-            initial_value=array_ops.zeros(shape, dtype=dtype),
-            name=name,
-            trainable=False,
-            collections=collections,
-            validate_shape=validate_shape)
+        initial_value=array_ops.zeros(shape, dtype=dtype),
+        name=name,
+        trainable=False,
+        collections=collections,
+        validate_shape=validate_shape)
 
-def streaming_tp_fp_arrays(num_gbboxes, tp, fp, 
+
+def streaming_tp_fp_arrays(num_gbboxes, tp, fp,
                            metrics_collections=None,
                            updates_collections=None,
                            name=None):
@@ -48,11 +50,10 @@ def streaming_tp_fp_arrays(num_gbboxes, tp, fp,
         v_num_objects = _create_local('v_num_gbboxes', shape=[], dtype=tf.int32)
         v_tp = _create_local('v_tp', shape=[0, ], dtype=tf.bool)
         v_fp = _create_local('v_fp', shape=[0, ], dtype=tf.bool)
-        
 
         # Update operations.
         num_objects_op = state_ops.assign_add(v_num_objects,
-                                           tf.reduce_sum(num_gbboxes))
+                                              tf.reduce_sum(num_gbboxes))
         tp_op = state_ops.assign(v_tp, tf.concat([v_tp, tp], axis=0),
                                  validate_shape=False)
         fp_op = state_ops.assign(v_fp, tf.concat([v_fp, fp], axis=0),
@@ -79,13 +80,16 @@ def precision_recall(num_gbboxes, tp, fp, scope=None):
         recall = tfe_math.safe_divide(tp, tf.cast(num_gbboxes, tf.float32), 'recall')
         precision = tfe_math.safe_divide(tp, tp + fp, 'precision')
         return tf.tuple([precision, recall])
-    
+
+
 def fmean(pre, rec):
     """Compute f-mean with precision and recall
     """
+
     def zero():
         return tf.zeros([])
+
     def not_zero():
         return 2 * pre * rec / (pre + rec)
-    
+
     return tf.cond(pre + rec > 0, not_zero, zero)

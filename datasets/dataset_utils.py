@@ -14,12 +14,12 @@
 # ==============================================================================
 """Contains utilities for downloading and converting datasets."""
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
 slim = tf.contrib.slim
 
-import util
-
+from pylib import util
 
 
 def int64_feature(value):
@@ -48,11 +48,11 @@ def bytes_feature(value):
 
 def image_to_tfexample(image_data, image_format, height, width, class_id):
     return tf.train.Example(features=tf.train.Features(feature={
-      'image/encoded': bytes_feature(image_data),
-      'image/format': bytes_feature(image_format),
-      'image/class/label': int64_feature(class_id),
-      'image/height': int64_feature(height),
-      'image/width': int64_feature(width),
+        'image/encoded': bytes_feature(image_data),
+        'image/format': bytes_feature(image_format),
+        'image/class/label': int64_feature(class_id),
+        'image/height': int64_feature(height),
+        'image/width': int64_feature(width),
     }))
 
 
@@ -105,41 +105,45 @@ def convert_to_example(image_data, filename, labels, labels_text, bboxes, orient
     Returns:
       Example proto
     """
-     
+
     image_format = b'JPEG'
     oriented_bboxes = np.asarray(oriented_bboxes)
     if len(bboxes) == 0:
-        print filename, 'has no bboxes'
-     
+        print
+        filename, 'has no bboxes'
+
     bboxes = np.asarray(bboxes)
+
     def get_list(obj, idx):
         if len(obj) > 0:
             return list(obj[:, idx])
         return []
+
     example = tf.train.Example(features=tf.train.Features(feature={
-            'image/shape': int64_feature(list(shape)),
-            'image/object/bbox/xmin': float_feature(get_list(bboxes, 0)),
-            'image/object/bbox/ymin': float_feature(get_list(bboxes, 1)),
-            'image/object/bbox/xmax': float_feature(get_list(bboxes, 2)),
-            'image/object/bbox/ymax': float_feature(get_list(bboxes, 3)),
-            'image/object/bbox/x1': float_feature(get_list(oriented_bboxes, 0)),
-            'image/object/bbox/y1': float_feature(get_list(oriented_bboxes, 1)),
-            'image/object/bbox/x2': float_feature(get_list(oriented_bboxes, 2)),
-            'image/object/bbox/y2': float_feature(get_list(oriented_bboxes, 3)),
-            'image/object/bbox/x3': float_feature(get_list(oriented_bboxes, 4)),
-            'image/object/bbox/y3': float_feature(get_list(oriented_bboxes, 5)),
-            'image/object/bbox/x4': float_feature(get_list(oriented_bboxes, 6)),
-            'image/object/bbox/y4': float_feature(get_list(oriented_bboxes, 7)),
-            'image/object/bbox/label': int64_feature(labels),
-            'image/object/bbox/label_text': bytes_feature(labels_text),
-            'image/format': bytes_feature(image_format),
-            'image/filename': bytes_feature(filename),
-            'image/encoded': bytes_feature(image_data)}))
+        'image/shape': int64_feature(list(shape)),
+        'image/object/bbox/xmin': float_feature(get_list(bboxes, 0)),
+        'image/object/bbox/ymin': float_feature(get_list(bboxes, 1)),
+        'image/object/bbox/xmax': float_feature(get_list(bboxes, 2)),
+        'image/object/bbox/ymax': float_feature(get_list(bboxes, 3)),
+        'image/object/bbox/x1': float_feature(get_list(oriented_bboxes, 0)),
+        'image/object/bbox/y1': float_feature(get_list(oriented_bboxes, 1)),
+        'image/object/bbox/x2': float_feature(get_list(oriented_bboxes, 2)),
+        'image/object/bbox/y2': float_feature(get_list(oriented_bboxes, 3)),
+        'image/object/bbox/x3': float_feature(get_list(oriented_bboxes, 4)),
+        'image/object/bbox/y3': float_feature(get_list(oriented_bboxes, 5)),
+        'image/object/bbox/x4': float_feature(get_list(oriented_bboxes, 6)),
+        'image/object/bbox/y4': float_feature(get_list(oriented_bboxes, 7)),
+        'image/object/bbox/label': int64_feature(labels),
+        'image/object/bbox/label_text': bytes_feature(labels_text),
+        'image/format': bytes_feature(image_format),
+        'image/filename': bytes_feature(filename),
+        'image/encoded': bytes_feature(image_data)}))
     return example
+
 
 def get_split(split_name, dataset_dir, file_pattern, num_samples, reader=None):
     dataset_dir = util.io.get_absolute_path(dataset_dir)
-    
+
     if util.str.contains(file_pattern, '%'):
         file_pattern = util.io.join_path(dataset_dir, file_pattern % split_name)
     else:
@@ -171,7 +175,7 @@ def get_split(split_name, dataset_dir, file_pattern, num_samples, reader=None):
         'shape': slim.tfexample_decoder.Tensor('image/shape'),
         'filename': slim.tfexample_decoder.Tensor('image/filename'),
         'object/bbox': slim.tfexample_decoder.BoundingBox(
-                ['ymin', 'xmin', 'ymax', 'xmax'], 'image/object/bbox/'),
+            ['ymin', 'xmin', 'ymax', 'xmax'], 'image/object/bbox/'),
         'object/oriented_bbox/x1': slim.tfexample_decoder.Tensor('image/object/bbox/x1'),
         'object/oriented_bbox/x2': slim.tfexample_decoder.Tensor('image/object/bbox/x2'),
         'object/oriented_bbox/x3': slim.tfexample_decoder.Tensor('image/object/bbox/x3'),
@@ -184,7 +188,7 @@ def get_split(split_name, dataset_dir, file_pattern, num_samples, reader=None):
     }
     decoder = slim.tfexample_decoder.TFExampleDecoder(keys_to_features, items_to_handlers)
 
-    labels_to_names = {0:'background', 1:'text'}
+    labels_to_names = {0: 'background', 1: 'text'}
     items_to_descriptions = {
         'image': 'A color image of varying height and width.',
         'shape': 'Shape of the image',
@@ -193,10 +197,10 @@ def get_split(split_name, dataset_dir, file_pattern, num_samples, reader=None):
     }
 
     return slim.dataset.Dataset(
-            data_sources=file_pattern,
-            reader=reader,
-            decoder=decoder,
-            num_samples=num_samples,
-            items_to_descriptions=items_to_descriptions,
-            num_classes=2,
-            labels_to_names=labels_to_names)
+        data_sources=file_pattern,
+        reader=reader,
+        decoder=decoder,
+        num_samples=num_samples,
+        items_to_descriptions=items_to_descriptions,
+        num_classes=2,
+        labels_to_names=labels_to_names)

@@ -41,10 +41,10 @@ def get_preprocessing(is_training=False):
       ValueError: If Preprocessing `name` is not recognized.
     """
 
-
-    def preprocessing_fn(image, labels, bboxes, xs, ys, 
+    def preprocessing_fn(image, labels, bboxes, xs, ys,
                          out_shape, data_format='NHWC', **kwargs):
         return ssd_vgg_preprocessing.preprocess_image(
             image, labels, bboxes, out_shape, xs, ys, data_format=data_format,
             is_training=is_training, **kwargs)
+
     return preprocessing_fn

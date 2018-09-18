@@ -14,26 +14,26 @@
 # ==============================================================================
 """Pre-processing images for SSD-type networks.
 """
-from enum import Enum, IntEnum
+from enum import IntEnum
+
 import numpy as np
-
 import tensorflow as tf
-import tf_extended as tfe
-
+from pylib import util
 from tensorflow.python.ops import control_flow_ops
-import cv2
-import util
+
+import tf_extended as tfe
 from preprocessing import tf_image
 
 slim = tf.contrib.slim
 
 # Resizing strategies.
-Resize = IntEnum('Resize', ('NONE',                # Nothing!
-                            'CENTRAL_CROP',        # Crop (and pad if necessary).
-                            'PAD_AND_RESIZE',      # Pad, and resize to output shape.
-                            'WARP_RESIZE'))        # Warp resize.
+Resize = IntEnum('Resize', ('NONE',  # Nothing!
+                            'CENTRAL_CROP',  # Crop (and pad if necessary).
+                            'PAD_AND_RESIZE',  # Pad, and resize to output shape.
+                            'WARP_RESIZE'))  # Warp resize.
 
 import config
+
 # VGG mean parameters.
 _R_MEAN = config.r_mean
 _G_MEAN = config.g_mean
@@ -41,7 +41,7 @@ _B_MEAN = config.b_mean
 
 # Some training pre-processing parameters.
 MAX_EXPAND_SCALE = config.max_expand_scale
-BBOX_CROP_OVERLAP = config.bbox_crop_overlap        # Minimum overlap to keep a bbox after cropping.
+BBOX_CROP_OVERLAP = config.bbox_crop_overlap  # Minimum overlap to keep a bbox after cropping.
 MIN_OBJECT_COVERED = config.min_object_covered
 CROP_ASPECT_RATIO_RANGE = config.crop_aspect_ratio_range  # Distortion ratio during cropping.
 AREA_RANGE = config.area_range
@@ -53,6 +53,7 @@ MIN_SHORTER_SIDE = config.min_shorter_side
 MAX_SHORTER_SIDE = config.max_shorter_side
 
 USE_ROTATION = config.use_rotation
+
 
 def tf_image_whitened(image, means=[_R_MEAN, _G_MEAN, _B_MEAN]):
     """Subtracts the given means from each image channel.
@@ -125,8 +126,8 @@ def apply_with_random_selector(x, func, num_cases):
     sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32)
     # Pass the real x only to one of the func calls.
     return control_flow_ops.merge([
-            func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
-            for case in range(num_cases)])[0]
+        func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
+        for case in range(num_cases)])[0]
 
 
 def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
@@ -185,11 +186,11 @@ def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
 def distorted_bounding_box_crop(image,
                                 labels,
                                 bboxes,
-                                xs, ys, 
+                                xs, ys,
                                 min_object_covered,
                                 aspect_ratio_range,
                                 area_range,
-                                max_attempts = 200,
+                                max_attempts=200,
                                 scope=None):
     """Generates cropped_image using a one of the bboxes randomly distorted.
 
@@ -219,31 +220,33 @@ def distorted_bounding_box_crop(image,
         # Each bounding box has shape [1, num_boxes, box coords] and
         # the coordinates are ordered [ymin, xmin, ymax, xmax].
         num_bboxes = tf.shape(bboxes)[0]
+
         def has_bboxes():
             return bboxes, labels, xs, ys
+
         def no_bboxes():
-            xmin = tf.random_uniform((1,1), minval = 0, maxval = 0.9)
-            ymin = tf.random_uniform((1,1), minval = 0, maxval = 0.9)
-            w = tf.constant(0.1, dtype = tf.float32)
+            xmin = tf.random_uniform((1, 1), minval=0, maxval=0.9)
+            ymin = tf.random_uniform((1, 1), minval=0, maxval=0.9)
+            w = tf.constant(0.1, dtype=tf.float32)
             h = w
             xmax = xmin + w
             ymax = ymin + h
-            rnd_bboxes = tf.concat([ymin, xmin, ymax, xmax], axis = 1)
-            rnd_labels = tf.constant([config.background_label], dtype = tf.int64)
-            rnd_xs = tf.concat([xmin, xmax, xmax, xmin], axis = 1)
-            rnd_ys = tf.concat([ymin, ymin, ymax, ymax], axis = 1)
-            
+            rnd_bboxes = tf.concat([ymin, xmin, ymax, xmax], axis=1)
+            rnd_labels = tf.constant([config.background_label], dtype=tf.int64)
+            rnd_xs = tf.concat([xmin, xmax, xmax, xmin], axis=1)
+            rnd_ys = tf.concat([ymin, ymin, ymax, ymax], axis=1)
+
             return rnd_bboxes, rnd_labels, rnd_xs, rnd_ys
-        
+
         bboxes, labels, xs, ys = tf.cond(num_bboxes > 0, has_bboxes, no_bboxes)
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
-                tf.shape(image),
-                bounding_boxes=tf.expand_dims(bboxes, 0),
-                min_object_covered=min_object_covered,
-                aspect_ratio_range=aspect_ratio_range,
-                area_range=area_range,
-                max_attempts=max_attempts,
-                use_image_if_no_bounding_boxes=True)
+            tf.shape(image),
+            bounding_boxes=tf.expand_dims(bboxes, 0),
+            min_object_covered=min_object_covered,
+            aspect_ratio_range=aspect_ratio_range,
+            area_range=area_range,
+            max_attempts=max_attempts,
+            use_image_if_no_bounding_boxes=True)
         distort_bbox = distort_bbox[0, 0]
 
         # Crop the image to the specified bounding box.
@@ -253,8 +256,8 @@ def distorted_bounding_box_crop(image,
 
         # Update bounding boxes: resize and filter out.
         bboxes, xs, ys = tfe.bboxes_resize(distort_bbox, bboxes, xs, ys)
-        labels, bboxes, xs, ys = tfe.bboxes_filter_overlap(labels, bboxes, xs, ys, 
-                    threshold=BBOX_CROP_OVERLAP, assign_value = LABEL_IGNORE)
+        labels, bboxes, xs, ys = tfe.bboxes_filter_overlap(labels, bboxes, xs, ys,
+                                                           threshold=BBOX_CROP_OVERLAP, assign_value=LABEL_IGNORE)
         return cropped_image, labels, bboxes, xs, ys, distort_bbox
 
 
@@ -267,20 +270,20 @@ def tf_rotate_image(image, xs, ys):
     return image, bboxes, xs, ys
 
 
-
 def rotate_image(image, xs, ys):
-    rotation_angle = np.random.randint(low = -90, high = 90);
-    scale = np.random.uniform(low = MIN_ROTATION_SCLAE, high = MAX_ROTATION_SCLAE)
-#     scale = 1.0
+    rotation_angle = np.random.randint(low=-90, high=90);
+    scale = np.random.uniform(low=MIN_ROTATION_SCLAE, high=MAX_ROTATION_SCLAE)
+    #     scale = 1.0
     h, w = image.shape[0:2]
     # rotate image
-    image, M = util.img.rotate_about_center(image, rotation_angle, scale = scale)
-    
+    image, M = util.img.rotate_about_center(image, rotation_angle, scale=scale)
+
     nh, nw = image.shape[0:2]
-    
+
     # rotate bboxes
     xs = xs * w
     ys = ys * h
+
     def rotate_xys(xs, ys):
         xs = np.reshape(xs, -1)
         ys = np.reshape(ys, -1)
@@ -288,25 +291,27 @@ def rotate_image(image, xs, ys):
         xs = np.reshape(xs, (-1, 4))
         ys = np.reshape(ys, (-1, 4))
         return xs, ys
+
     xs, ys = rotate_xys(xs, ys)
     xs = xs * 1.0 / nw
     ys = ys * 1.0 / nh
-    xmin = np.min(xs, axis = 1)
-    xmin[np.where(xmin < 0)] = 0    
-    
-    xmax = np.max(xs, axis = 1)
+    xmin = np.min(xs, axis=1)
+    xmin[np.where(xmin < 0)] = 0
+
+    xmax = np.max(xs, axis=1)
     xmax[np.where(xmax > 1)] = 1
-    
-    ymin = np.min(ys, axis = 1)
+
+    ymin = np.min(ys, axis=1)
     ymin[np.where(ymin < 0)] = 0
-    
-    ymax = np.max(ys, axis = 1)
+
+    ymax = np.max(ys, axis=1)
     ymax[np.where(ymax > 1)] = 1
-    
+
     bboxes = np.transpose(np.asarray([ymin, xmin, ymax, xmax]))
     image = np.asarray(image, np.uint8)
     return image, bboxes, xs, ys
- 
+
+
 def preprocess_for_train(image, labels, bboxes, xs, ys,
                          out_shape, data_format='NHWC',
                          scope='ssd_preprocessing_train'):
@@ -331,75 +336,77 @@ def preprocess_for_train(image, labels, bboxes, xs, ys,
     with tf.name_scope(scope, 'ssd_preprocessing_train', [image, labels, bboxes]):
         if image.get_shape().ndims != 3:
             raise ValueError('Input must be of size [height, width, C>0]')
-        
+
         # rotate image by 0, 0.5 * pi, pi, 1.5 * pi randomly
-#         if USE_ROTATION:
-#             image, bboxes, xs, ys = tf_image.random_rotate90(image, bboxes, xs, ys)
-            # rotate image by 0, 0.5 * pi, pi, 1.5 * pi randomly
+        #         if USE_ROTATION:
+        #             image, bboxes, xs, ys = tf_image.random_rotate90(image, bboxes, xs, ys)
+        # rotate image by 0, 0.5 * pi, pi, 1.5 * pi randomly
         if USE_ROTATION:
-            rnd = tf.random_uniform((), minval = 0, maxval = 1)
+            rnd = tf.random_uniform((), minval=0, maxval=1)
+
             def rotate():
                 return tf_image.random_rotate90(image, bboxes, xs, ys)
- 
+
             def no_rotate():
                 return image, bboxes, xs, ys
-             
+
             image, bboxes, xs, ys = tf.cond(tf.less(rnd, config.rotation_prob), rotate, no_rotate)
-    
+
         # expand image
         if MAX_EXPAND_SCALE > 1:
-            rnd2 = tf.random_uniform((), minval = 0, maxval = 1)
+            rnd2 = tf.random_uniform((), minval=0, maxval=1)
+
             def expand():
-                scale = tf.random_uniform([], minval = 1.0, 
-                              maxval = MAX_EXPAND_SCALE, dtype=tf.float32)
-                image_shape = tf.cast(tf.shape(image), dtype = tf.float32)
+                scale = tf.random_uniform([], minval=1.0,
+                                          maxval=MAX_EXPAND_SCALE, dtype=tf.float32)
+                image_shape = tf.cast(tf.shape(image), dtype=tf.float32)
                 image_h, image_w = image_shape[0], image_shape[1]
-                target_h = tf.cast(image_h * scale, dtype = tf.int32)
-                target_w = tf.cast(image_w * scale, dtype = tf.int32)
+                target_h = tf.cast(image_h * scale, dtype=tf.int32)
+                target_w = tf.cast(image_w * scale, dtype=tf.int32)
                 tf.logging.info('expanded')
                 return tf_image.resize_image_bboxes_with_crop_or_pad(
-                             image, bboxes, xs, ys, target_h, target_w)
- 
+                    image, bboxes, xs, ys, target_h, target_w)
+
             def no_expand():
                 return image, bboxes, xs, ys
-             
+
             image, bboxes, xs, ys = tf.cond(tf.less(rnd2, config.expand_prob), expand, no_expand)
 
-        
         # Convert to float scaled [0, 1].
         if image.dtype != tf.float32:
             image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-#         tf_summary_image(image, bboxes, 'image_with_bboxes')
+        #         tf_summary_image(image, bboxes, 'image_with_bboxes')
 
         # Distort image and bounding boxes.
         dst_image = image
         dst_image, labels, bboxes, xs, ys, distort_bbox = \
             distorted_bounding_box_crop(image, labels, bboxes, xs, ys,
-                                        min_object_covered = MIN_OBJECT_COVERED,
-                                        aspect_ratio_range = CROP_ASPECT_RATIO_RANGE, 
-                                        area_range = AREA_RANGE)
+                                        min_object_covered=MIN_OBJECT_COVERED,
+                                        aspect_ratio_range=CROP_ASPECT_RATIO_RANGE,
+                                        area_range=AREA_RANGE)
         # Resize image to output size.
         dst_image = tf_image.resize_image(dst_image, out_shape,
                                           method=tf.image.ResizeMethod.BILINEAR,
                                           align_corners=False)
         tf_summary_image(dst_image, bboxes, 'image_shape_distorted')
-        
+
         # Filter bboxes using the length of shorter sides
         if USING_SHORTER_SIDE_FILTERING:
-             xs = xs * out_shape[1]
-             ys = ys * out_shape[0]
-             labels, bboxes, xs, ys = tfe.bboxes_filter_by_shorter_side(labels, 
-                bboxes, xs, ys, 
-                min_height = MIN_SHORTER_SIDE, max_height = MAX_SHORTER_SIDE, 
-                assign_value = LABEL_IGNORE)
-             xs = xs / out_shape[1]
-             ys = ys / out_shape[0]
-             
+            xs = xs * out_shape[1]
+            ys = ys * out_shape[0]
+            labels, bboxes, xs, ys = tfe.bboxes_filter_by_shorter_side(labels,
+                                                                       bboxes, xs, ys,
+                                                                       min_height=MIN_SHORTER_SIDE,
+                                                                       max_height=MAX_SHORTER_SIDE,
+                                                                       assign_value=LABEL_IGNORE)
+            xs = xs / out_shape[1]
+            ys = ys / out_shape[0]
+
         # Randomly distort the colors. There are 4 ways to do it.
         dst_image = apply_with_random_selector(
-                dst_image,
-                lambda x, ordering: distort_color(x, ordering, fast_mode),
-                num_cases=4)
+            dst_image,
+            lambda x, ordering: distort_color(x, ordering, fast_mode),
+            num_cases=4)
         tf_summary_image(dst_image, bboxes, 'image_color_distorted')
 
         # Rescale to VGG input scale.
@@ -414,7 +421,7 @@ def preprocess_for_train(image, labels, bboxes, xs, ys,
 def preprocess_for_eval(image, labels, bboxes, xs, ys,
                         out_shape, data_format='NHWC',
                         resize=Resize.WARP_RESIZE,
-                        do_resize = True,
+                        do_resize=True,
                         scope='ssd_preprocessing_train'):
     """Preprocess an image for evaluation.
 
@@ -432,7 +439,7 @@ def preprocess_for_eval(image, labels, bboxes, xs, ys,
 
         image = tf.to_float(image)
         image = tf_image_whitened(image, [_R_MEAN, _G_MEAN, _B_MEAN])
-        
+
         if do_resize:
             if resize == Resize.NONE:
                 pass
@@ -448,11 +455,11 @@ def preprocess_for_eval(image, labels, bboxes, xs, ys,
 
 
 def preprocess_image(image,
-                     labels = None,
-                     bboxes = None,
-                     xs = None, ys = None,
-                     out_shape = None,
-                     data_format = 'NHWC',
+                     labels=None,
+                     bboxes=None,
+                     xs=None, ys=None,
+                     out_shape=None,
+                     data_format='NHWC',
                      is_training=False,
                      **kwargs):
     """Pre-process an given image.
