@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import cv2
 import numpy as np
 import tensorflow as tf
 from pylib import util
@@ -268,3 +269,29 @@ def np_bboxes_jaccard(bbox, gxs, gys):
         iou = intersect * 1.0 / union
         jaccard[gt_idx] = iou
     return jaccard
+
+
+def find_contours(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    im2, contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
+    return contours
+
+
+def filter_contours(contours, min_width=None, min_height=None, max_width=None, max_height=None):
+    contour_list = []
+    bboxes = []
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        if min_width is not None and w < min_width:
+            continue
+        if min_height is not None and h < min_height:
+            continue
+        if max_width is not None and w > max_width:
+            continue
+        if max_height is not None and h < max_height:
+            continue
+
+        contour_list.append(cnt)
+        bboxes.append((x, y, x + w - 1, y + h - 1))
+    return contour_list, bboxes
