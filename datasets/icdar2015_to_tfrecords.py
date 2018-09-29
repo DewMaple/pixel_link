@@ -4,7 +4,7 @@ import tensorflow as tf
 from pylib import util
 
 import config
-from .dataset_utils import convert_to_example
+from datasets.dataset_utils import convert_to_example
 
 
 def cvt_to_tfrecords(output_path, data_path, gt_path):
@@ -18,7 +18,7 @@ def cvt_to_tfrecords(output_path, data_path, gt_path):
             labels_text = []
             path = util.io.join_path(data_path, image_name)
             print("\tconverting image: %d/%d %s" % (idx, len(image_names), image_name))
-            image_data = tf.gfile.FastGFile(path, 'r').read()
+            image_data = tf.gfile.FastGFile(path, 'rb').read()
 
             image = util.img.imread(path, rgb=True)
             shape = image.shape
@@ -28,11 +28,16 @@ def cvt_to_tfrecords(output_path, data_path, gt_path):
             image_name = util.str.split(image_name, '.')[0]
             gt_name = 'gt_' + image_name + '.txt'
             gt_filepath = util.io.join_path(gt_path, gt_name)
-            lines = util.io.read_lines(gt_filepath)
+            print('gt_filepath: {}'.format(gt_filepath))
+            with open(gt_filepath, 'r', encoding='utf-8-sig') as f:
+                lines = f.readlines()
 
             for line in lines:
+                line = line.strip()
                 line = util.str.remove_all(line, '\xef\xbb\xbf')
-                gt = util.str.split(line, ',')
+                print('line: {}'.format(line))
+                gt = line.split(',')
+                print('gt: {}'.format(gt))
                 oriented_box = [int(gt[i]) for i in range(8)]
                 oriented_box = np.asarray(oriented_box) / ([w, h] * 4)
                 oriented_bboxes.append(oriented_box)
@@ -46,18 +51,18 @@ def cvt_to_tfrecords(output_path, data_path, gt_path):
                 bboxes.append([xmin, ymin, xmax, ymax])
 
                 # might be wrong here, but it doesn't matter because the label is not going to be used in detection
-                labels_text.append(gt[-1])
+                labels_text.append(gt[-1].encode())
                 ignored = util.str.contains(gt[-1], '###')
                 if ignored:
                     labels.append(config.ignore_label)
                 else:
                     labels.append(config.text_label)
-            example = convert_to_example(image_data, image_name, labels, labels_text, bboxes, oriented_bboxes, shape)
+            example = convert_to_example(image_data, image_name.encode(), labels, labels_text, bboxes, oriented_bboxes, shape)
             tfrecord_writer.write(example.SerializeToString())
 
 
 if __name__ == "__main__":
-    root_dir = util.io.get_absolute_path('~/dataset/ICDAR2015/Challenge4/')
+    root_dir = util.io.get_absolute_path('/Users/administrator/workspace/ai_data/ICDAR2015/')
     output_dir = util.io.get_absolute_path('~/dataset/pixel_link/ICDAR/')
     util.io.mkdir(output_dir)
 

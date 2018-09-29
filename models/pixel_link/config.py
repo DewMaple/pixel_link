@@ -120,7 +120,7 @@ def _set_image_shape(shape):
     assert h % 4 == 0
 
     train_image_shape = [h, w]
-    score_map_shape = (h // strides[0], w // strides[0])
+    score_map_shape = (h / strides[0], w / strides[0])
     image_shape = train_image_shape
 
 
